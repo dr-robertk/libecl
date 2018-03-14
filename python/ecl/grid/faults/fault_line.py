@@ -17,18 +17,11 @@
 from __future__ import print_function
 import sys
 
-from ecl.util import monkey_the_camel
-from ecl.util import DoubleVector,stat
+from ecl.util.util import monkey_the_camel
+from ecl.util.util import DoubleVector
 from ecl.util.geometry import CPolyline
 
 from .fault_segments import FaultSegment
-
-
-def cmp_index_pair(p1, p2):
-    if p1[0] == p2[0]:
-        return cmp(p1[1], p2[1])
-    else:
-        return cmp(p1[0], p2[0])
 
 
 class FaultLine(object):
@@ -100,13 +93,13 @@ class FaultLine(object):
         for segment in self:
             corner = segment.getC1()
             i = corner % (nx + 1)
-            j = corner / (nx + 1)
+            j = corner // (nx + 1)
             pl.append((i,j))
 
         segment = self[-1]
         corner = segment.getC2()
         i = corner % (nx + 1)
-        j = corner / (nx + 1)
+        j = corner // (nx + 1)
         pl.append((i,j))
 
         self.__ijpolyline = pl
@@ -179,8 +172,10 @@ class FaultLine(object):
 
                     self.__neighborCells.append((g1,g2))
             else:
-                raise Exception("Internal error: found fault segment with variation in two directions")
-            self.__neighborCells.sort(cmp_index_pair)
+                raise Exception("Internal error: found fault segment with "
+                                "variation in two directions")
+
+            self.__neighborCells.sort(key=lambda k: (k[0], k[1]))
 
 
     def get_neighbor_cells(self):

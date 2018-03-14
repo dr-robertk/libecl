@@ -22,7 +22,7 @@ from unittest import skipIf, skipUnless, skipIf
 from ecl.eclfile import EclFile
 from ecl.summary import EclSum
 
-from ecl.util import StringList, TimeVector, DoubleVector, CTime
+from ecl.util.util import StringList, TimeVector, DoubleVector, CTime
 
 from ecl.util.test import TestAreaContext
 from tests import EclTest, statoil_test
@@ -460,7 +460,7 @@ class SumTest(EclTest):
             self.assertEqual(intersect_summary.keys(), reloaded_summary.keys())
 
     def test_ix_case(self):
-        intersect_summary = EclSum(self.createTestPath("Statoil/ECLIPSE/ix/summary/Create_Region_Around_Well"))
+        intersect_summary = EclSum(self.createTestPath("Statoil/ECLIPSE/ix/summary/CREATE_REGION_AROUND_WELL"))
         self.assertIsNotNone(intersect_summary)
 
         self.assertTrue(
@@ -474,13 +474,13 @@ class SumTest(EclTest):
         hwell_padder = lambda key : key if key.split(":")[-1] != "HWELL_PR" else key + "OD"
         self.assertEqual(
                 intersect_summary.keys("WWCT*"),
-                map(hwell_padder, eclipse_summary.keys("WWCT*"))
+                list(map(hwell_padder, eclipse_summary.keys("WWCT*")))
                 )
 
     def test_ix_write(self):
         for data_set in [
-                    "Statoil/ECLIPSE/ix/summary/Create_Region_Around_Well",
-                    "Statoil/ECLIPSE/ix/troll/IX_NOPH3_R04_75X75X1_grid2.SMSPEC"
+                    "Statoil/ECLIPSE/ix/summary/CREATE_REGION_AROUND_WELL",
+                    "Statoil/ECLIPSE/ix/troll/IX_NOPH3_R04_75X75X1_GRID2.SMSPEC"
                     ]:
 
             with TestAreaContext("my_space" + data_set.split("/")[-1]) as area:
@@ -497,7 +497,7 @@ class SumTest(EclTest):
                         )
 
     def test_ix_caseII(self):
-        troll_summary = EclSum( self.createTestPath("Statoil/ECLIPSE/ix/troll/IX_NOPH3_R04_75X75X1_grid2.SMSPEC"))
+        troll_summary = EclSum( self.createTestPath("Statoil/ECLIPSE/ix/troll/IX_NOPH3_R04_75X75X1_GRID2.SMSPEC"))
         self.assertIsNotNone(troll_summary)
         self.assertTrue("WMCTL:Q21BH1" in list(troll_summary.keys()))
 

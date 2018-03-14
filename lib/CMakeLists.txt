@@ -1,16 +1,6 @@
 project(libecl-ecl C CXX)
 
-if (HAVE_PTHREAD)
-    # The block_fs filesystem is so heavily dependant on pthreads that it is
-    # not built if de not have pthreads.
-     list(APPEND opt_srcs util/thread_pool.c)
-endif ()
 
-if (LAPACK_FOUND)
-    list(APPEND opt_srcs util/matrix_lapack.c
-                         util/matrix_blas.c
-                         util/matrix_stat.c)
-endif ()
 
 if (HAVE_BACKTRACE)
     list(APPEND opt_srcs util/util_abort_gnu.c)
@@ -93,7 +83,6 @@ add_library(ecl util/rng.c
                 util/vector.c
                 util/parser.c
                 util/stringlist.c
-                util/matrix.c
                 util/buffer.c
                 util/timer.c
                 util/time_interval.c
@@ -168,7 +157,6 @@ target_link_libraries(ecl PUBLIC ${m}
                                  ${dl}
                                  ${pthread}
                                  ${blas}
-                                 ${lapack}
                                  ${zlib}
                                  ${shlwapi}
                                  ${ws2_32}
@@ -244,7 +232,6 @@ foreach (name   ert_util_alloc_file_components
                 ert_util_chdir
                 ert_util_filename
                 ert_util_hash_test
-                ert_util_matrix
                 ert_util_parent_path
                 ert_util_PATH_test
                 ert_util_realpath
@@ -283,15 +270,6 @@ add_test(NAME ert_util_work_area
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/util/tests
 )
 
-find_library( VALGRIND NAMES valgr )
-if (VALGRIND)
-    set(valgrind_cmd valgrind --error-exitcode=1 --tool=memcheck)
-endif ()
-
-add_executable(test_thread_pool util/tests/test_thread_pool.c)
-target_link_libraries(test_thread_pool ecl)
-add_test(NAME test_thread_pool COMMAND ${valgrind_cmd} test_thread_pool)
-
 add_executable(ert_util_cwd_test util/tests/ert_util_cwd_test.c)
 target_link_libraries(ert_util_cwd_test ecl)
 add_test(NAME ert_util_cwd_test COMMAND ert_util_cwd_test ${CMAKE_CURRENT_BINARY_DIR})
@@ -311,15 +289,6 @@ target_link_libraries(ert_util_path_stack_test ecl)
 add_test(NAME ert_util_path_stack_test COMMAND ert_util_path_stack_test
     ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
-if (LAPACK_FOUND)
-   add_executable(ert_util_matrix_lapack util/tests/ert_util_matrix_lapack.c)
-   target_link_libraries(ert_util_matrix_lapack ecl)
-   add_test(NAME ert_util_matrix_lapack COMMAND ert_util_matrix_lapack)
-
-   add_executable(ert_util_matrix_stat util/tests/ert_util_matrix_stat.c)
-   target_link_libraries(ert_util_matrix_stat ecl)
-   add_test(NAME ert_util_matrix_stat COMMAND ert_util_matrix_stat)
-endif()
 
 if (HAVE_BACKTRACE)
    add_executable(ert_util_abort_gnu_tests util/tests/ert_util_abort_gnu_tests.c)
@@ -354,6 +323,7 @@ endif()
 foreach (name   ecl_alloc_cpgrid
                 ecl_alloc_grid_dxv_dyv_dzv
                 ecl_fault_block_layer
+                ecl_util_path_access
                 ecl_grid_add_nnc
                 ecl_grid_copy
                 ecl_grid_create
@@ -377,6 +347,7 @@ foreach (name   ecl_alloc_cpgrid
                 test_transactions
                 ecl_rst_file
                 ecl_sum_writer
+                ecl_util_filenames
                 ecl_util_make_date_no_shift
                 ecl_util_month_range
                 ecl_valid_basename

@@ -17,7 +17,7 @@
 from __future__ import print_function
 from cwrap import BaseCClass
 
-from ecl.util import monkey_the_camel
+from ecl.util.util import monkey_the_camel
 from ecl import EclDataType
 from ecl import EclPrototype
 from ecl.grid.faults import Fault
@@ -50,7 +50,7 @@ class FaultBlockLayer(BaseCClass):
             raise ValueError("Invalid input - failed to create FaultBlockLayer")
 
         # The underlying C implementation uses lazy evaluation and
-        # needs to hold on to the grid reference. We therefor take
+        # needs to hold on to the grid reference. We therefore take
         # references to it here, to protect against premature garbage
         # collection.
         self.grid_ref = grid

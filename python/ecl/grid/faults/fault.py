@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from ecl.util import monkey_the_camel
+from ecl.util.util import monkey_the_camel
 from ecl.util.geometry import Polyline, CPolyline, GeometryTools
 
 from .fault_line import FaultLine
@@ -199,7 +199,7 @@ class Fault(object):
 
 
     def has_layer(self, K):
-        return self.__layer_map.has_key(K)
+        return K in self.__layer_map
 
 
     def add_layer(self, K):

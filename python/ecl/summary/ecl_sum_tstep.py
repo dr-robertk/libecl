@@ -16,8 +16,8 @@
 
 from cwrap import BaseCClass
 
-from ecl.util import monkey_the_camel
-from ecl.util import CTime
+from ecl.util.util import monkey_the_camel
+from ecl.util.util import CTime
 from ecl import EclPrototype
 
 
@@ -32,7 +32,7 @@ class EclSumTStep(BaseCClass):
     _get_ministep = EclPrototype("int ecl_sum_tstep_get_ministep(ecl_sum_tstep)")
     _set_from_key = EclPrototype("void ecl_sum_tstep_set_from_key(ecl_sum_tstep, char*, float)")
     _get_from_key = EclPrototype("double ecl_sum_tstep_get_from_key(ecl_sum_tstep, char*)")
-    _has_key      = EclPrototype("bool ecl_sum_tstep_has_key(ecl_sum_tstep)")
+    _has_key = EclPrototype("bool ecl_sum_tstep_has_key(ecl_sum_tstep, char*)")
 
 
 

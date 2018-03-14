@@ -31,11 +31,11 @@ import sys
 import os.path
 import math
 import itertools
-from cwrap import CFILE, BaseCClass
+from cwrap import CFILE, BaseCClass, load, open as copen
 
 from ecl import EclPrototype
-from ecl.util import monkey_the_camel
-from ecl.util import IntVector
+from ecl.util.util import monkey_the_camel
+from ecl.util.util import IntVector
 from ecl import  EclDataType, EclUnitTypeEnum
 from ecl.eclfile import EclKW, FortIO
 from ecl.grid import Cell
@@ -140,7 +140,7 @@ class EclGrid(BaseCClass):
         """
 
         if os.path.isfile(filename):
-            with open(filename) as f:
+            with copen(filename) as f:
                 specgrid = EclKW.read_grdecl(f, "SPECGRID", ecl_type=EclDataType.ECL_INT, strict=False)
                 zcorn = EclKW.read_grdecl(f, "ZCORN")
                 coord = EclKW.read_grdecl(f, "COORD")
@@ -830,12 +830,6 @@ class EclGrid(BaseCClass):
         else:
             raise IndexError("Invalid layer value:%d" % k)
 
-
-    @staticmethod
-    def d_cmp(a,b):
-        return cmp(a[0], b[0])
-
-
     def find_cell_corner_xy(self, x, y, k):
         """Will find the corner nr of corner closest to utm coordinates x,y.
 
@@ -868,7 +862,7 @@ class EclGrid(BaseCClass):
         c3 = i + 1 + (j + 1)*(nx + 1)
 
         l = [(d0, c0), (d1,c1), (d2, c2), (d3,c3)]
-        l.sort(EclGrid.d_cmp)
+        l.sort(key=lambda k: k[0])
         return l[0][1]
 
 

@@ -29,8 +29,9 @@ import ctypes
 
 from cwrap import BaseCClass
 
-from ecl.util import monkey_the_camel
-from ecl.util import IntVector
+import ecl
+from ecl.util.util import monkey_the_camel
+from ecl.util.util import IntVector
 
 from ecl import EclPrototype
 from ecl.grid.faults import Layer
@@ -66,7 +67,7 @@ def select_method(select):
     """
 
     def select_wrapper(self , *args ,  **kwargs):
-        intersect = kwargs.has_key('intersect') and kwargs['intersect']
+        intersect = 'intersect' in kwargs and kwargs['intersect']
         if intersect:
             new_region = EclRegion( self.grid , False )
             select(new_region , *args )
@@ -207,11 +208,12 @@ class EclRegion(BaseCClass):
         """
         return self._alloc_copy( )
 
-
     def __nonzero__(self):
         global_list = self.get_global_list()
         return len(global_list) > 0
-    
+
+    def __bool__(self):
+        return self.__nonzero__()
 
     def __iand__(self , other):
         """
@@ -857,7 +859,7 @@ class EclRegion(BaseCClass):
         Helper function to apply a function with one scalar arg on target_kw.
         """
         data_type = target_kw.data_type
-        if func_dict.has_key( data_type ):
+        if data_type in func_dict:
             func = func_dict[ data_type ]
             func( target_kw, scalar , force_active )
         else:
@@ -926,7 +928,11 @@ class EclRegion(BaseCClass):
             else:
                 raise TypeError("Type mismatch")
         else:
-            self.scale_kw( target_kw , 1/other , force_active )
+            if target_kw.data_type.is_int():
+                scale = 1 // other
+            else:
+                scale = 1.0 / other
+            self.scale_kw( target_kw , scale , force_active )
 
 
     def copy_kw( self , target_kw , src_kw , force_active = False):
