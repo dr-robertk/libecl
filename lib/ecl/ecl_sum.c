@@ -31,7 +31,6 @@
 #include <ert/util/bool_vector.h>
 #include <ert/util/time_t_vector.h>
 #include <ert/util/stringlist.h>
-#include <ert/util/time_interval.h>
 
 #include <ert/ecl/ecl_util.h>
 #include <ert/ecl/ecl_sum.h>
@@ -97,6 +96,7 @@ struct ecl_sum_struct {
   UTIL_TYPE_ID_DECLARATION;
   ecl_smspec_type   * smspec;     /* Internalized version of the SMSPEC file. */
   ecl_sum_data_type * data;       /* The data - can be NULL. */
+  ecl_sum_type      * restart_case;
 
 
   bool                fmt_case;
@@ -123,7 +123,7 @@ UTIL_IS_INSTANCE_FUNCTION( ecl_sum , ECL_SUM_ID );
    The actual loading is implemented in the ecl_sum_data.c file.
 */
 
-void ecl_sum_set_case( ecl_sum_type * ecl_sum , const char * ecl_case) {
+void ecl_sum_set_case( ecl_sum_type * ecl_sum , const char * input_arg) {
   util_safe_free( ecl_sum->ecl_case );
   util_safe_free( ecl_sum->path );
   util_safe_free( ecl_sum->abs_path );
@@ -132,9 +132,9 @@ void ecl_sum_set_case( ecl_sum_type * ecl_sum , const char * ecl_case) {
   {
     char  *path , *base, *ext;
 
-    util_alloc_file_components( ecl_case , &path , &base , &ext);
+    util_alloc_file_components( input_arg, &path , &base , &ext);
 
-    ecl_sum->ecl_case = util_alloc_string_copy( ecl_case );
+    ecl_sum->ecl_case = util_alloc_filename( path, base, NULL );
     ecl_sum->path     = util_alloc_string_copy( path );
     ecl_sum->base     = util_alloc_string_copy( base );
     ecl_sum->ext      = util_alloc_string_copy( ext );
@@ -167,6 +167,7 @@ static ecl_sum_type * ecl_sum_alloc__( const char * input_arg , const char * key
 
   ecl_sum->smspec = NULL;
   ecl_sum->data   = NULL;
+  ecl_sum->restart_case = NULL;
 
   return ecl_sum;
 }
@@ -182,11 +183,17 @@ static bool ecl_sum_fread_data( ecl_sum_type * ecl_sum , const stringlist_type *
 
 
 static void ecl_sum_fread_history( ecl_sum_type * ecl_sum ) {
-  ecl_sum_type * history = ecl_sum_fread_alloc_case__( ecl_smspec_get_restart_case( ecl_sum->smspec ) , ":" , true);
-  if (history) {
-    ecl_sum_data_add_case(ecl_sum->data , history->data );
-    ecl_sum_free( history );
+  char * restart_header = ecl_util_alloc_filename(NULL,
+                                                  ecl_smspec_get_restart_case(ecl_sum->smspec),
+                                                  ECL_SUMMARY_HEADER_FILE,
+                                                  ecl_smspec_get_formatted(ecl_sum->smspec),
+                                                  -1);
+  ecl_sum_type * restart_case = ecl_sum_fread_alloc_case__(restart_header, ":" , true);
+  if (restart_case) {
+    ecl_sum->restart_case = restart_case;
+    ecl_sum_data_add_case(ecl_sum->data , restart_case->data );
   }
+  free(restart_header);
 }
 
 
@@ -315,22 +322,46 @@ ecl_sum_tstep_type * ecl_sum_add_tstep( ecl_sum_type * ecl_sum , int report_step
   return ecl_sum_data_add_new_tstep( ecl_sum->data , report_step , sim_seconds );
 }
 
-
-ecl_sum_type * ecl_sum_alloc_restart_writer( const char * ecl_case , const char * restart_case , bool fmt_output , bool unified , const char * key_join_string , time_t sim_start , bool time_in_days , int nx , int ny , int nz) {
+static ecl_sum_type * ecl_sum_alloc_writer__( const char * ecl_case , const char * restart_case , int restart_step, bool fmt_output , bool unified , const char * key_join_string , time_t sim_start , bool time_in_days , int nx , int ny , int nz) {
 
   ecl_sum_type * ecl_sum = ecl_sum_alloc__( ecl_case , key_join_string );
   if (ecl_sum) {
     ecl_sum_set_unified( ecl_sum , unified );
     ecl_sum_set_fmt_case( ecl_sum , fmt_output );
 
-    ecl_sum->smspec = ecl_smspec_alloc_writer( key_join_string , restart_case, sim_start , time_in_days , nx , ny , nz );
+    if (restart_case)
+      ecl_sum->smspec = ecl_smspec_alloc_restart_writer( key_join_string , restart_case, restart_step, sim_start , time_in_days , nx , ny , nz );
+    else
+      ecl_sum->smspec = ecl_smspec_alloc_writer( key_join_string, sim_start, time_in_days, nx, ny, nz);
+
     ecl_sum->data   = ecl_sum_data_alloc_writer( ecl_sum->smspec );
   }
   return ecl_sum;
 }
 
+
+ecl_sum_type * ecl_sum_alloc_restart_writer2( const char * ecl_case , const char * restart_case , int restart_step, bool fmt_output , bool unified , const char * key_join_string , time_t sim_start , bool time_in_days , int nx , int ny , int nz) {
+  return ecl_sum_alloc_writer__(ecl_case, restart_case, restart_step, fmt_output, unified, key_join_string, sim_start, time_in_days, nx, ny, nz);
+}
+
+
+/*
+  This does not take in the restart_step argument is depcrecated. You should use the
+  ecl_sum_alloc_restart_writer2() function.
+*/
+
+ecl_sum_type * ecl_sum_alloc_restart_writer( const char * ecl_case , const char * restart_case, bool fmt_output , bool unified , const char * key_join_string , time_t sim_start , bool time_in_days , int nx , int ny , int nz) {
+  int restart_step = 0;
+  return ecl_sum_alloc_writer__(ecl_case, restart_case, restart_step, fmt_output, unified, key_join_string, sim_start, time_in_days, nx, ny, nz);
+}
+
+
+
+
+
+
 ecl_sum_type * ecl_sum_alloc_writer( const char * ecl_case , bool fmt_output , bool unified , const char * key_join_string , time_t sim_start , bool time_in_days , int nx , int ny , int nz) {
-  return ecl_sum_alloc_restart_writer(ecl_case, NULL, fmt_output, unified, key_join_string, sim_start, time_in_days, nx, ny, nz);
+  return ecl_sum_alloc_writer__(ecl_case, NULL, 0, fmt_output, unified, key_join_string, sim_start, time_in_days, nx, ny, nz);
 }
 
 
@@ -360,10 +391,13 @@ void ecl_sum_free_data( ecl_sum_type * ecl_sum ) {
 
 
 void ecl_sum_free( ecl_sum_type * ecl_sum ) {
-  if (ecl_sum->data != NULL)
+  if (ecl_sum->restart_case)
+    ecl_sum_free(ecl_sum->restart_case);
+
+  if (ecl_sum->data)
     ecl_sum_free_data( ecl_sum );
 
-  if (ecl_sum->smspec != NULL)
+  if (ecl_sum->smspec)
     ecl_smspec_free( ecl_sum->smspec );
 
   util_safe_free( ecl_sum->path );
@@ -943,9 +977,6 @@ time_t ecl_sum_iget_sim_time( const ecl_sum_type * ecl_sum , int index ) {
   return ecl_sum_data_iget_sim_time( ecl_sum->data , index );
 }
 
-const time_interval_type * ecl_sum_get_sim_time( const ecl_sum_type * ecl_sum) {
-  return ecl_sum_data_get_sim_time( ecl_sum->data );
-}
 
 time_t ecl_sum_get_data_start( const ecl_sum_type * ecl_sum ) {
   return ecl_sum_data_get_data_start( ecl_sum->data );
@@ -1135,8 +1166,12 @@ void ecl_sum_export_csv(const ecl_sum_type * ecl_sum , const char * filename  , 
 }
 
 
-const char * ecl_sum_get_restart_case(const ecl_sum_type * ecl_sum) {
-  return ecl_smspec_get_restart_case(ecl_sum->smspec);
+const ecl_sum_type * ecl_sum_get_restart_case(const ecl_sum_type * ecl_sum) {
+  return ecl_sum->restart_case;
+}
+
+int ecl_sum_get_restart_step(const ecl_sum_type * ecl_sum) {
+  return ecl_smspec_get_restart_step(ecl_sum->smspec);
 }
 
 
@@ -1385,4 +1420,22 @@ time_t_vector_type * ecl_sum_alloc_time_solution( const ecl_sum_type * ecl_sum ,
     double_vector_free( seconds );
   }
   return solution;
+}
+
+
+ert_ecl_unit_enum ecl_sum_get_unit_system(const ecl_sum_type * ecl_sum) {
+  return ecl_smspec_get_unit_system(ecl_sum->smspec);
+}
+
+double ecl_sum_iget_last_value(const ecl_sum_type * ecl_sum, int param_index) {
+  return ecl_sum_data_get_last_value(ecl_sum->data, param_index);
+}
+
+double ecl_sum_get_last_value_gen_key(const ecl_sum_type * ecl_sum, const char * gen_key) {
+  const smspec_node_type * node = ecl_sum_get_general_var_node( ecl_sum , gen_key );
+  return ecl_sum_iget_last_value(ecl_sum, smspec_node_get_params_index(node));
+}
+
+double ecl_sum_get_last_value_node(const ecl_sum_type * ecl_sum, const smspec_node_type *node) {
+  return ecl_sum_iget_last_value(ecl_sum, smspec_node_get_params_index(node));
 }

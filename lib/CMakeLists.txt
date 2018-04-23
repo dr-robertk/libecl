@@ -75,7 +75,6 @@ add_library(ecl util/rng.c
                 util/node_data.c
                 util/node_ctype.c
                 util/util.c
-                util/util_env.c
                 util/util_symlink.c
                 util/util_lfs.c
                 util/util_unlink.c
@@ -85,7 +84,6 @@ add_library(ecl util/rng.c
                 util/stringlist.c
                 util/buffer.c
                 util/timer.c
-                util/time_interval.c
                 util/string_util.c
                 util/type_vector_functions.c
                 util/ecl_version.c
@@ -233,7 +231,6 @@ foreach (name   ert_util_alloc_file_components
                 ert_util_filename
                 ert_util_hash_test
                 ert_util_parent_path
-                ert_util_PATH_test
                 ert_util_realpath
                 ert_util_relpath_test
                 ert_util_rng
@@ -244,7 +241,6 @@ foreach (name   ert_util_alloc_file_components
                 ert_util_stringlist_test
                 ert_util_string_util
                 ert_util_strstr_int_format
-                ert_util_time_interval
                 ert_util_type_vector_functions
                 ert_util_vector_test
                 ert_util_datetime
@@ -429,12 +425,6 @@ endif()
 #
 # ecl
 #
-
-if (PING_PATH)
-    add_executable(ert_util_ping util/tests/ert_util_ping.c)
-    target_link_libraries(ert_util_ping ecl)
-    add_test(NAME ert_util_ping COMMAND ert_util_ping)
-endif ()
 
 
 add_executable(ecl_coarse_test ecl/tests/ecl_coarse_test.c)

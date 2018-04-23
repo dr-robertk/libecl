@@ -43,6 +43,9 @@
 #define UTIL_PATH_SEP_CHAR             '/'   /* A simple character used when we want an actual char instance (i.e. not a pointer). */
 #endif
 
+#define UTIL_WINDOWS_PATH_SEP_CHAR '\\'
+#define UTIL_POSIX_PATH_SEP_CHAR   '/'
+
 #define UTIL_NEWLINE_STRING "          \n"
 #define UTIL_DEFAULT_MKDIR_MODE 0777         /* Directories are by default created with mode a+rwx - and then comes the umask ... */
 
@@ -370,13 +373,6 @@ typedef enum {left_pad   = 0,
   int      util_fnmatch( const char * pattern , const char * string );
   void     util_time_utc( time_t * t , struct tm * ts );
 
-  char      ** util_alloc_PATH_list(void);
-  char       * util_alloc_PATH_executable(const char * executable );
-  char       * util_isscanf_alloc_envvar( const char * string , int env_index );
-  void         util_setenv( const char * variable , const char * value);
-  const char * util_interp_setenv( const char * variable , const char * value);
-  void         util_unsetenv( const char * variable);
-  char       * util_alloc_envvar( const char * value );
   bool         util_is_link(const char * );  // Will always return false on windows
   int          util_chdir(const char * path);
   bool         util_chdir_file( const char * filename );
@@ -494,9 +490,6 @@ const char * util_enum_iget( int index , int size , const util_enum_element_type
 
 void    util_abort__(const char * file , const char * function , int line , const char * fmt , ...);
 void    util_abort_signal(int );
-void    util_abort_append_version_info(const char * );
-void    util_abort_free_version_info(void);
-void    util_abort_set_executable( const char * argv0 );
 
 
 

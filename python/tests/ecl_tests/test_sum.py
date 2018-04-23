@@ -25,8 +25,9 @@ import stat
 from contextlib import contextmanager
 from unittest import skipIf, skipUnless, skipIf
 
+from ecl import EclUnitTypeEnum
 from ecl import EclDataType
-from ecl.eclfile import FortIO, openFortIO, EclKW
+from ecl.eclfile import FortIO, openFortIO, EclKW, EclFile
 from ecl.summary import EclSum, EclSumVarType, EclSumKeyWordVector
 from ecl.util.test import TestAreaContext
 from tests import EclTest
@@ -46,8 +47,9 @@ def pushd(path):
 
 def create_prediction(history, pred_path):
     restart_case = os.path.join( os.getcwd(), history.base)
+    restart_step = history.last_report
     with pushd(pred_path):
-        prediction = create_case( case = "PREDICTION", restart_case = restart_case, data_start = history.end_date)
+        prediction = create_case( case = "PREDICTION", restart_case = restart_case, restart_step = restart_step, data_start = history.end_date)
         prediction.fwrite()
 
 
@@ -63,9 +65,9 @@ def fgpt(days):
     else:
         return 100 - days
 
-def create_case(case = "CSV", restart_case = None, data_start = None):
+def create_case(case = "CSV", restart_case = None, restart_step = -1, data_start = None):
     length = 100
-    return createEclSum(case , [("FOPT", None , 0) , ("FOPR" , None , 0), ("FGPT" , None , 0)],
+    return createEclSum(case , [("FOPT", None , 0, "SM3") , ("FOPR" , None , 0, "SM3/DAY"), ("FGPT" , None , 0, "SM3")],
                         sim_length_days = length,
                         num_report_step = 10,
                         num_mini_step = 10,
@@ -73,18 +75,19 @@ def create_case(case = "CSV", restart_case = None, data_start = None):
                         func_table = {"FOPT" : fopt,
                                       "FOPR" : fopr ,
                                       "FGPT" : fgpt },
-                        restart_case = restart_case)
+                        restart_case = restart_case,
+                        restart_step = restart_step)
 
 class SumTest(EclTest):
 
 
     def test_mock(self):
-        case = createEclSum("CSV" , [("FOPT", None , 0) , ("FOPR" , None , 0)])
+        case = createEclSum("CSV" , [("FOPT", None , 0, "SM3") , ("FOPR" , None , 0, "SM3/DAY")])
         self.assertTrue("FOPT" in case)
         self.assertFalse("WWCT:OPX" in case)
 
     def test_TIME_special_case(self):
-        case = createEclSum("CSV" , [("FOPT", None , 0) , ("FOPR" , None , 0)])
+        case = createEclSum("CSV" , [("FOPT", None , 0, "SM3") , ("FOPR" , None , 0, "SM3/DAY")])
         keys = case.keys()
         self.assertEqual( len(keys) , 2 )
         self.assertIn( "FOPT" , keys )
@@ -104,10 +107,10 @@ class SumTest(EclTest):
         self.assertEqual( EclSum.varType( "WNEWTON") , EclSumVarType.ECL_SMSPEC_MISC_VAR )
         self.assertEqual( EclSum.varType( "AARQ:4") , EclSumVarType.ECL_SMSPEC_AQUIFER_VAR )
 
-        case = createEclSum("CSV" , [("FOPT", None , 0) ,
-                                     ("FOPR" , None , 0),
-                                     ("AARQ" , None , 10),
-                                    ("RGPT" , None  ,1)])
+        case = createEclSum("CSV" , [("FOPT", None , 0, "SM3") ,
+                                     ("FOPR" , None , 0, "SM3/DAY"),
+                                     ("AARQ" , None , 10, "???"),
+                                    ("RGPT" , None  ,1, "SM3")])
 
         node1 = case.smspec_node( "FOPT" )
         self.assertEqual( node1.varType( ) , EclSumVarType.ECL_SMSPEC_FIELD_VAR )
@@ -130,7 +133,7 @@ class SumTest(EclTest):
             a = node1 < 1
 
     def test_csv_export(self):
-        case = createEclSum("CSV" , [("FOPT", None , 0) , ("FOPR" , None , 0)])
+        case = createEclSum("CSV" , [("FOPT", None , 0, "SM3") , ("FOPR" , None , 0, "SM3/DAY")])
         sep = ";"
         with TestAreaContext("ecl/csv"):
             case.exportCSV( "file.csv" , sep = sep)
@@ -144,7 +147,7 @@ class SumTest(EclTest):
                 self.assertEqual( len(row) , 4 )
                 break
 
-
+            self.assertEqual(case.unit("FOPT"), "SM3")
 
         with TestAreaContext("ecl/csv"):
             case.exportCSV( "file.csv" , keys = ["FOPT"] , sep = sep)
@@ -267,6 +270,7 @@ class SumTest(EclTest):
 
             case2 = EclSum.load( "CSVX.SMSPEC" , "CSV.UNSMRY" )
             self.assert_solve( case2 )
+            self.assertEqual(case.unit("FOPR"), "SM3/DAY")
 
     def test_invalid(self):
         case = create_case()
@@ -297,7 +301,7 @@ class SumTest(EclTest):
 
     def test_kw_vector(self):
         case1 = create_case()
-        case2 = createEclSum("CSV" , [("FOPR", None , 0) , ("FOPT" , None , 0), ("FWPT" , None , 0)],
+        case2 = createEclSum("CSV" , [("FOPR", None , 0, "SM3/DAY") , ("FOPT" , None , 0, "SM3"), ("FWPT" , None , 0, "SM3")],
                              sim_length_days = 100,
                              num_report_step = 10,
                              num_mini_step = 10,
@@ -363,6 +367,15 @@ class SumTest(EclTest):
             self.assertIn(key, ecl_sum_vector)
 
 
+    def test_last(self):
+        case = create_case()
+        with self.assertRaises(KeyError):
+            case.get_last_value("NO_SUCH_KEY")
+        last_fopt = case.get_last_value("FOPT")
+        values = case.get_values("FOPT")
+        self.assertEqual( last_fopt, values[-1])
+
+
     def test_time_range(self):
         case = create_case()
         with self.assertRaises(ValueError):
@@ -400,7 +413,7 @@ class SumTest(EclTest):
 
     def test_restart_abs_path(self):
         with TestAreaContext("restart_test"):
-           history =  create_case(case = "HISTORY")
+           history = create_case(case = "HISTORY")
            history.fwrite()
 
            pred_path = "prediction"
@@ -411,7 +424,9 @@ class SumTest(EclTest):
            # on the path used for $TMP and so on we do not really know here if
            # the restart_case has been set or not.
            if pred.restart_case:
-               self.assertEqual(pred.restart_case, os.path.join(os.getcwd(), history.case))
+               self.assertTrue(isinstance(pred.restart_case, EclSum))
+               self.assertEqual(pred.restart_case.case, os.path.join(os.getcwd(), history.case))
+               self.assertEqual(pred.restart_step, history.last_report)
 
                length = pred.sim_length
                pred_times = pred.alloc_time_vector(False)
@@ -451,3 +466,33 @@ class SumTest(EclTest):
             pred = EclSum("PREDICTION")
 
             os.chmod("history", stat.S_IRWXU)
+
+
+    def test_units(self):
+        case = create_case()
+        self.assertEqual(case.unit_system, EclUnitTypeEnum.ECL_METRIC_UNITS)
+
+
+        # We do not really have support for writing anything else than the
+        # default MERIC unit system. To be able to test the read functionality
+        # we therefor monkey-patch the summary files in place.
+        with TestAreaContext("unit_test"):
+            case = create_case("UNITS")
+            case.fwrite()
+            case2 = EclSum("UNITS")
+
+            kw_list = []
+            f = EclFile("UNITS.SMSPEC")
+            for kw in f:
+                if kw.name == "INTEHEAD":
+                    kw[0] = 3
+                kw_list.append(kw.copy())
+
+            f.close()
+            with openFortIO("UNITS.SMSPEC", mode = FortIO.WRITE_MODE) as f:
+                for kw in kw_list:
+                    kw.fwrite(f)
+
+
+            case = EclSum("UNITS")
+            self.assertEqual(case.unit_system, EclUnitTypeEnum.ECL_LAB_UNITS)

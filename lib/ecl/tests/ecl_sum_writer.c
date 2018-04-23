@@ -157,10 +157,10 @@ void test_ecl_sum_alloc_restart_writer() {
       ecl_file_type * restart_file = ecl_file_open( "CASE2.SMSPEC" , 0 );
       ecl_file_view_type * view_file = ecl_file_get_global_view( restart_file );
       test_assert_true( ecl_file_view_has_kw(view_file, RESTART_KW));
-      ecl_kw_type * kw = ecl_file_view_iget_kw(view_file, 0);
-      test_assert_int_equal(8, ecl_kw_get_size(kw));
-      test_assert_string_equal( "CASE1   ", ecl_kw_iget_ptr( kw , 0 ) );
-      test_assert_string_equal( "        ", ecl_kw_iget_ptr( kw , 1 ) );
+      ecl_kw_type * restart_kw = ecl_file_view_iget_named_kw(view_file, "RESTART", 0);
+      test_assert_int_equal(8, ecl_kw_get_size(restart_kw));
+      test_assert_string_equal( "CASE1   ", ecl_kw_iget_ptr( restart_kw , 0 ) );
+      test_assert_string_equal( "        ", ecl_kw_iget_ptr( restart_kw , 1 ) );
 
       for (int time_index=0; time_index < ecl_sum_get_data_length( case1 ); time_index++)
          test_assert_double_equal(  ecl_sum_get_general_var( case1 , time_index , "FOPT"), ecl_sum_get_general_var( case2 , time_index , "FOPT"));
@@ -184,23 +184,25 @@ void test_long_restart_names() {
    const char * name = "THE_CASE";
    test_work_area_type * work_area = test_work_area_alloc("sum_write_restart_long_name");
    {
+       int restart_step = 77;
        time_t start_time = util_make_date_utc( 1,1,2010 );
-       ecl_sum_type * ecl_sum = ecl_sum_alloc_restart_writer( name , restart_case , false , true , ":" , start_time , true , 3, 3, 3);
+       ecl_sum_type * ecl_sum = ecl_sum_alloc_restart_writer2( name , restart_case , restart_step, false , true , ":" , start_time , true , 3, 3, 3);
        ecl_sum_fwrite( ecl_sum );
        ecl_sum_free(ecl_sum);
 
        ecl_file_type * smspec_file = ecl_file_open( "THE_CASE.SMSPEC" , 0 );
        ecl_file_view_type * view_file = ecl_file_get_global_view( smspec_file );
        test_assert_true( ecl_file_view_has_kw(view_file, RESTART_KW));
-       ecl_kw_type * kw = ecl_file_view_iget_kw(view_file, 0);
-       test_assert_int_equal(8, ecl_kw_get_size(kw));
+       ecl_kw_type * restart_kw = ecl_file_view_iget_named_kw(view_file, "RESTART", 0);
+       test_assert_int_equal(8, ecl_kw_get_size(restart_kw));
 
        for (int n = 0; n < 8; n++) {
          char s[9]; sprintf(s, "WWWWGGG%d", n);
-         test_assert_string_equal(s, ecl_kw_iget_char_ptr(kw, n) );
+         test_assert_string_equal(s, ecl_kw_iget_char_ptr(restart_kw, n) );
        }
+       ecl_file_close( smspec_file);
        {
-         ecl_smspec_type * smspec = ecl_smspec_alloc_writer( ":" , "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ", start_time, true, 3, 3 ,3);
+         ecl_smspec_type * smspec = ecl_smspec_alloc_restart_writer( ":" , "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ", 10, start_time, true, 3, 3 ,3);
          /*
            Restart case is too long - it is ignored.
          */

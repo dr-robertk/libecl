@@ -847,7 +847,7 @@ char * util_alloc_realpath__(const char * input_path) {
       if (stack_size > 0) {
         for (int pos = stack_size - 1; pos >= 0; pos--) {
           const char * path_elm = path_stack[pos];
-          if (pos == stack_size) {
+          if (pos == (stack_size- 1)) {
 #ifdef ERT_WINDOWS
             // Windows:
             //   1) If the path starts with X: - just do nothing
@@ -1034,71 +1034,6 @@ char * util_alloc_normal_path( const char * input_path ) {
 }
 
 
-
-/**
-   This function will allocate a string copy of the env_index'th
-   occurence of an embedded environment variable from the input
-   string.
-
-   An environment variable is defined as follows:
-
-     1. It starts with '$'.
-     2. It ends with a characeter NOT in the set [a-Z,0-9,_].
-
-   The function will return environment variable number 'env_index'. If
-   no such environment variable can be found in the string the
-   function will return NULL.
-
-   Observe that the returned string will start with '$'. This is to
-   simplify subsequent calls to util_string_replace_XXX() functions,
-   however &ret_value[1] must be used in the subsequent getenv() call:
-
-   {
-      char * env_var = util_isscanf_alloc_envvar( s , 0 );
-      if (env_var != NULL) {
-         const char * env_value = getenv( &env_var[1] );   // Skip the leading '$'.
-         if (env_value != NULL)
-            util_string_replace_inplace( s , env_value );
-         else
-            fprintf(stderr,"** Warning: environment variable: \'%s\' is not defined \n", env_var);
-         free( env_var );
-      }
-   }
-
-
-*/
-
-char * util_isscanf_alloc_envvar( const char * string , int env_index ) {
-  int env_count = 0;
-  const char * offset = string;
-  const char * env_ptr;
-  do {
-    env_ptr = strchr( offset , '$' );
-    offset = &env_ptr[1];
-    env_count++;
-  } while ((env_count <= env_index) && (env_ptr != NULL));
-
-  if (env_ptr != NULL) {
-    /*
-       We found an environment variable we are interested in. Find the
-       end of this variable and return a copy.
-    */
-    int length = 1;
-    bool cont  = true;
-    do {
-
-      if ( !( isalnum(env_ptr[length]) || env_ptr[length] == '_' ))
-        cont = false;
-      else
-        length++;
-      if (length == strlen( env_ptr ))
-        cont = false;
-    } while (cont);
-
-    return util_alloc_substring_copy( env_ptr , 0 , length );
-  } else
-    return NULL; /* Could not find any env variable occurences. */
-}
 
 
 
@@ -2702,6 +2637,7 @@ bool util_ftruncate(FILE * stream , long size) {
 */
 
 bool util_same_file(const char * file1 , const char * file2) {
+#ifdef ERT_HAVE_UNISTD
   stat_type buffer1 , buffer2;
   int stat1,stat2;
 
@@ -2715,6 +2651,18 @@ bool util_same_file(const char * file1 , const char * file2) {
       return false;
   } else
     return false;  // Files which do not exist are no equal!
+#else
+  if (util_file_exists(file1) && util_file_exists(file2)) {
+    char * abs_path1 = util_alloc_abs_path(file1);
+    char * abs_path2 = util_alloc_abs_path(file2);
+    bool same_file = util_string_equal(abs_path1, abs_path2);
+    free(abs_path1);
+    free(abs_path2);
+      return same_file;
+  }
+  else
+    return false;    
+#endif
 }
 
 
@@ -4827,39 +4775,6 @@ const char * util_enum_iget( int index , int size , const util_enum_element_type
 }
 
 
-static char * __abort_program_message = NULL;                  /* Can use util_abort_append_version_info() to fill this with
-                                                               version info+++ wich will be printed when util_abort() is called. */
-static char * __current_executable    = NULL;
-
-
-void util_abort_append_version_info(const char * msg) {
-  __abort_program_message = util_strcat_realloc( __abort_program_message , msg );
-}
-
-
-void util_abort_free_version_info() {
-  util_safe_free( __abort_program_message );
-  util_safe_free( __current_executable );
-
-  __current_executable    = NULL;
-  __abort_program_message = NULL;
-}
-
-
-void util_abort_set_executable( const char * argv0 ) {
-  if (util_is_abs_path(argv0))
-    __current_executable = util_realloc_string_copy( __current_executable , argv0 );
-  else {
-    char * executable;
-    if (util_is_executable( argv0 ))
-      executable = util_alloc_realpath(argv0);
-    else
-      executable = util_alloc_PATH_executable( argv0 );
-
-    util_abort_set_executable( executable );
-    free( executable );
-  }
-}
 
 
 

@@ -39,7 +39,7 @@ from ecl.summary import EclSumTStep
 from ecl.summary import EclSumVarType
 from ecl.summary.ecl_sum_vector import EclSumVector
 from ecl.summary.ecl_smspec_node import EclSMSPECNode
-from ecl import EclPrototype
+from ecl import EclPrototype, EclUnitTypeEnum
 #, EclSumKeyWordVector
 
 
@@ -88,7 +88,8 @@ class EclSum(BaseCClass):
     TYPE_NAME = "ecl_sum"
     _fread_alloc_case              = EclPrototype("void*     ecl_sum_fread_alloc_case__(char*, char*, bool)", bind=False)
     _fread_alloc                   = EclPrototype("void*     ecl_sum_fread_alloc(char*, stringlist, char*, bool)", bind=False)
-    _create_restart_writer         = EclPrototype("ecl_sum_obj  ecl_sum_alloc_restart_writer(char*, char*, bool, bool, char*, time_t, bool, int, int, int)", bind = False)
+    _create_restart_writer         = EclPrototype("ecl_sum_obj  ecl_sum_alloc_restart_writer2(char*, char*, int, bool, bool, char*, time_t, bool, int, int, int)", bind = False)
+    _create_writer                 = EclPrototype("ecl_sum_obj  ecl_sum_alloc_writer(char*, bool, bool, char*, time_t, bool, int, int, int)", bind = False)
     _resample                      = EclPrototype("ecl_sum_obj  ecl_sum_alloc_resample( ecl_sum, char*, time_t_vector)")
     _iiget                         = EclPrototype("double   ecl_sum_iget(ecl_sum, int, int)")
     _free                          = EclPrototype("void     ecl_sum_free(ecl_sum)")
@@ -120,8 +121,10 @@ class EclSum(BaseCClass):
     _get_first_day                 = EclPrototype("double   ecl_sum_get_first_day(ecl_sum)")
     _get_data_start                = EclPrototype("time_t   ecl_sum_get_data_start(ecl_sum)")
     _get_unit                      = EclPrototype("char*    ecl_sum_get_unit(ecl_sum, char*)")
-    _get_restart_case              = EclPrototype("char*    ecl_sum_get_restart_case(ecl_sum)")
+    _get_restart_case              = EclPrototype("ecl_sum_ref ecl_sum_get_restart_case(ecl_sum)")
+    _get_restart_step              = EclPrototype("int      ecl_sum_get_restart_step(ecl_sum)")
     _get_simcase                   = EclPrototype("char*    ecl_sum_get_case(ecl_sum)")
+    _get_unit_system               = EclPrototype("ecl_unit_enum ecl_sum_get_unit_system(ecl_sum)")
     _get_base                      = EclPrototype("char*    ecl_sum_get_base(ecl_sum)")
     _get_path                      = EclPrototype("char*    ecl_sum_get_path(ecl_sum)")
     _get_abs_path                  = EclPrototype("char*    ecl_sum_get_abs_path(ecl_sum)")
@@ -139,7 +142,7 @@ class EclSum(BaseCClass):
     _add_tstep                     = EclPrototype("ecl_sum_tstep_ref ecl_sum_add_tstep(ecl_sum, int, double)")
     _export_csv                    = EclPrototype("void ecl_sum_export_csv(ecl_sum, char*, stringlist, char*, char*)")
     _identify_var_type             = EclPrototype("ecl_sum_var_type ecl_sum_identify_var_type(char*)", bind = False)
-
+    _get_last_value                = EclPrototype("double ecl_sum_get_last_value_gen_key(ecl_sum, char*)")
 
 
     def __init__(self, load_case, join_string=":", include_restart=True):
@@ -211,20 +214,63 @@ class EclSum(BaseCClass):
 
 
     @staticmethod
-    def writer(case, start_time, nx,ny,nz, fmt_output=False, unified=True, time_in_days=True, key_join_string=":"):
+    def writer(case,
+               start_time,
+               nx,ny,nz,
+               fmt_output=False,
+               unified=True,
+               time_in_days=True,
+               key_join_string=":"):
         """
         The writer is not generally usable.
         @rtype: EclSum
         """
-        return EclSum._create_restart_writer(case, None, fmt_output, unified, key_join_string, CTime(start_time), time_in_days, nx, ny, nz)
+
+        start = CTime(start_time)
+
+        smry = EclSum._create_writer(case,
+                                     fmt_output,
+                                     unified,
+                                     key_join_string,
+                                     start,
+                                     time_in_days,
+                                     nx,
+                                     ny,
+                                     nz)
+        smry._load_case = 'writer'
+        return smry
+
 
     @staticmethod
-    def restart_writer(case, restart_case, start_time, nx,ny,nz, fmt_output=False, unified=True, time_in_days=True, key_join_string=":"):
+    def restart_writer(case,
+                       restart_case,
+                       restart_step,
+                       start_time,
+                       nx,ny,nz,
+                       fmt_output=False,
+                       unified=True,
+                       time_in_days=True,
+                       key_join_string=":"):
         """
         The writer is not generally usable.
         @rtype: EclSum
         """
-        return EclSum._create_restart_writer(case, restart_case, fmt_output, unified, key_join_string, CTime(start_time), time_in_days, nx, ny, nz)
+
+        start = CTime(start_time)
+
+        smry = EclSum._create_restart_writer(case,
+                                             restart_case,
+                                             restart_step,
+                                             fmt_output,
+                                             unified,
+                                             key_join_string,
+                                             start,
+                                             time_in_days,
+                                             nx,
+                                             ny,
+                                             nz)
+        smry._load_case = 'restart_writer'
+        return smry
 
     def add_variable(self, variable, wgname=None, num=0, unit="None", default_value=0):
         return self._add_variable(variable, wgname, num, unit, default_value).setParent(parent=self)
@@ -232,7 +278,16 @@ class EclSum(BaseCClass):
 
     def add_t_step(self, report_step, sim_days):
         """ @rtype: EclSumTStep """
+        # report_step int
+        if not isinstance(report_step, int):
+            raise TypeError('Parameter report_step should be int, was %r' % report_step)
+        try:
+            float(sim_days)
+        except TypeError:
+            raise TypeError('Parameter sim_days should be float, was %r' % sim_days)
+
         sim_seconds = sim_days * 24 * 60 * 60
+
         return self._add_tstep(report_step, sim_seconds).setParent(parent=self)
 
 
@@ -270,9 +325,9 @@ class EclSum(BaseCClass):
         for i0 in range(length):
             while True:
                 time_index = index_list[i1]
+                i1 += 1
                 if time_index >= 0:
                     break
-                i1 += 1
 
             self.__daysR[i0] = self._iget_sim_days(time_index)
             self.__datesR[i0] = self.iget_date(time_index)
@@ -397,7 +452,10 @@ class EclSum(BaseCClass):
         The alternative method 'last' will return a EclSumNode
         instance with some extra time related information.
         """
-        return self[key].last_value
+        if not key in self:
+            raise KeyError("No such key:%s" % key)
+
+        return self._get_last_value(key)
 
     def get_last(self, key):
         """
@@ -761,6 +819,13 @@ class EclSum(BaseCClass):
 
 
     @property
+    def unit_system(self):
+        """
+        Will return the unit system in use for this case.
+        """
+        return self._get_unit_system()
+
+    @property
     def case(self):
         """
         Will return the case name of the current instance - optionally including path.
@@ -769,8 +834,19 @@ class EclSum(BaseCClass):
 
 
     @property
+    def restart_step(self):
+        """
+        Will return the report step this case has been restarted from, or -1.
+        """
+        return self._get_restart_step()
+
+
+    @property
     def restart_case(self):
-        return self._get_restart_case()
+        restart_case = self._get_restart_case()
+        if restart_case:
+            restart_case.setParent(parent=self)
+        return restart_case
 
 
     @property
