@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 2.8.12 )
+cmake_minimum_required( VERSION 2.8.12 ) # If you are creating Python wrappers for Windows, the actual version requirement is 3.4
 project( ERT C CXX )
 
 include(GNUInstallDirs)
@@ -227,9 +227,6 @@ check_function_exists( mkdir HAVE_POSIX_MKDIR)
 check_function_exists( _mkdir HAVE_WINDOWS_MKDIR)
 check_function_exists( opendir ERT_HAVE_OPENDIR )
 check_function_exists( posix_spawn ERT_HAVE_SPAWN )
-check_function_exists( pthread_timedjoin_np HAVE_TIMEDJOIN)
-check_function_exists( pthread_yield HAVE_YIELD)
-check_function_exists( pthread_yield_np HAVE_YIELD_NP)
 check_function_exists( readlinkat ERT_HAVE_READLINKAT )
 check_function_exists( realpath HAVE_REALPATH )
 check_function_exists( regexec ERT_HAVE_REGEXP )
@@ -267,6 +264,13 @@ try_compile( HAVE_SIGBUS  ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/cmake/Tests/
 try_compile( HAVE_PID_T   ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/cmake/Tests/test_pid_t.c )
 try_compile( HAVE_MODE_T  ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/cmake/Tests/test_mode_t.c )
 try_compile( ERT_HAVE_ISFINITE ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/cmake/Tests/test_isfinite.c)
+
+if (ERT_HAVE_READLINKAT)
+  try_compile( ERT_HAVE_READLINKAT_DECLARATION
+    ${CMAKE_BINARY_DIR}
+    ${PROJECT_SOURCE_DIR}/cmake/Tests/test_have_readlinkat_decl.c
+    )
+endif()
 
 set( BUILD_CXX ON )
 try_compile( HAVE_CXX_SHARED_PTR ${CMAKE_BINARY_DIR} ${PROJECT_SOURCE_DIR}/cmake/Tests/test_shared_ptr.cpp )
@@ -322,11 +326,6 @@ if (MSVC)
    add_definitions( -D__func__="\\"????\\"")
 endif()
 
-if (ERT_WINDOWS)
-    message(WARNING "Python is not supported on Windows")
-    set( ENABLE_PYTHON OFF )
-endif ()
-
 if (ERT_LINUX)
    add_definitions( -DHAVE_PROC )
 endif()
@@ -335,20 +334,22 @@ add_subdirectory( lib )
 add_subdirectory( applications )
 add_subdirectory( bin )
 
-if (ENABLE_PYTHON)
-   if (ERT_WINDOWS)
-      message(WARNING "Python is not supported on Windows")
-      set( ENABLE_PYTHON OFF )
-   else()
-      # If finding the Python interpreter and required packages
-      # fails in the python/CMakeLists.txt file the ENABLE_PYTHON
-      # will be set to OFF.
-      add_subdirectory( python )
+if (ENABLE_PYTHON AND ERT_WINDOWS)
+    if ((NOT MSVC) OR (MSVC_VERSION LESS 1900))
+      message(FATAL_ERROR "The Python wrappers require Visual Studio 2015 or newer")
+    endif()
+endif()
 
-      if(RST_DOC)
-         add_subdirectory( docs )
-      endif()
-   endif()
+if (ENABLE_PYTHON)
+    # If finding the Python interpreter and required packages
+    # fails in the python/CMakeLists.txt file the ENABLE_PYTHON
+    # will be set to OFF.
+    add_subdirectory( python )
+
+    if(RST_DOC)
+       add_subdirectory( docs )
+    endif()
+
 endif()
 
 if (ENABLE_PYTHON)
