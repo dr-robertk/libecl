@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALLDIR=`pwd`/../libecl-install
+INSTALLDIR=`pwd`/install
 
 rm -rf build
 mkdir build
