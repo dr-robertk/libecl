@@ -22,15 +22,15 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include <ert/util/util.hpp>
+#include <ert/util/util.h>
 #include <ert/util/double_vector.hpp>
 #include <ert/util/int_vector.hpp>
 #include <ert/util/hash.hpp>
 #include <ert/util/vector.hpp>
 #include <ert/util/stringlist.hpp>
 
-#include <ert/geometry/geo_util.h>
-#include <ert/geometry/geo_polygon.h>
+#include <ert/geometry/geo_util.hpp>
+#include <ert/geometry/geo_polygon.hpp>
 
 #include <ert/ecl/ecl_util.hpp>
 #include <ert/ecl/ecl_type.hpp>
@@ -762,6 +762,10 @@ struct ecl_grid_struct {
   ert_ecl_unit_enum     unit_system;
   int                   eclipse_version;
 };
+
+ert_ecl_unit_enum ecl_grid_get_unit_system(const ecl_grid_type * grid) {
+  return grid->unit_system;
+}
 
 static void ecl_cell_compare(const ecl_cell_type * c1 , const ecl_cell_type * c2,  bool include_nnc , bool * equal) {
   int i;
