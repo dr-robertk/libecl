@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <math.h>
 #include <time.h>
 
@@ -79,6 +80,15 @@ struct smspec_node_struct {
 
 bool smspec_node_equal( const smspec_node_type * node1,  const smspec_node_type * node2) {
   return smspec_node_cmp( node1 , node2 ) == 0;
+}
+
+
+bool smspec_node_gt( const smspec_node_type * node1,  const smspec_node_type * node2) {
+  return smspec_node_cmp( node1 , node2 ) > 0;
+}
+
+bool smspec_node_lt( const smspec_node_type * node1,  const smspec_node_type * node2) {
+  return smspec_node_cmp( node1 , node2 ) < 0;
 }
 
 static bool smspec_node_need_wgname(ecl_smspec_var_type var_type) {
@@ -317,7 +327,8 @@ static void smspec_node_set_invalid_flags( smspec_node_type * smspec_node) {
 
 
 bool smspec_node_identify_rate(const char * keyword) {
-  const char *rate_vars[] = {"OPR" , "GPR" , "WPR" , "LPR", "OIR", "GIR", "WIR", "LIR", "GOR" , "WCT"};
+  const char *rate_vars[] = {"OPR" , "GPR" , "WPR" , "LPR", "OIR", "GIR", "WIR", "LIR", "GOR" , "WCT",
+                             "OFR" , "GFR" , "WFR"};
   int num_rate_vars = sizeof( rate_vars ) / sizeof( rate_vars[0] );
   bool  is_rate           = false;
   int ivar;
@@ -368,6 +379,16 @@ bool smspec_node_identify_total(const char * keyword, ecl_smspec_var_type var_ty
         break;
       }
     }
+  }
+  else if (var_type == ECL_SMSPEC_SEGMENT_VAR) {
+    const char *total_vars[] = {"OFT", "GFT", "WFT"};
+    const char *var_substring = &keyword[1];
+    const size_t num_total_vars = sizeof(total_vars) / sizeof(total_vars[0]);
+    for (size_t ivar = 0; ivar < num_total_vars; ivar++)
+      if (strncmp(total_vars[ivar], var_substring, strlen(total_vars[ivar])) == 0) {
+        is_total = true;
+        break;
+      }
   }
   return is_total;
 }
@@ -494,7 +515,7 @@ static void smspec_node_set_gen_keys( smspec_node_type * smspec_node , const cha
     break;
   case(ECL_SMSPEC_FIELD_VAR):
     // KEYWORD
-    smspec_node->gen_key1 = util_alloc_string_copy( smspec_node->keyword.c_str() );
+    smspec_node->gen_key1 = smspec_node->keyword;
     break;
   case(ECL_SMSPEC_GROUP_VAR):
     // KEYWORD:WGNAME
