@@ -55,8 +55,7 @@ if (ZLIB_FOUND)
 endif ()
 
 if (ERT_BUILD_CXX)
-    list(APPEND opt_srcs util/TestArea.cpp
-                         ecl/FortIO.cpp
+    list(APPEND opt_srcs ecl/FortIO.cpp
                          ecl/Smspec.cpp
                          ecl/EclFilename.cpp
 )
@@ -73,6 +72,7 @@ add_library(ecl util/rng.cpp
                 util/mzran.cpp
                 util/hash_node.cpp
                 util/hash_sll.cpp
+                util/path.cpp
                 util/hash.cpp
                 util/node_data.cpp
                 util/node_ctype.cpp
@@ -90,6 +90,7 @@ add_library(ecl util/rng.cpp
                 util/ecl_version.cpp
                 util/perm_vector.cpp
                 util/test_util.cpp
+                util/cxx_string_util.cpp
                 ${opt_srcs}
 
                 ecl/ecl_rsthead.cpp
@@ -244,6 +245,7 @@ target_link_libraries(ecl3-testsuite catch2 ecl)
 add_test(NAME ecl3 COMMAND ecl3-testsuite)
 
 foreach (name   ert_util_alloc_file_components
+                ert_util_split_path
                 ert_util_approx_equal
                 ert_util_before_after
                 ert_util_binary_split
@@ -270,6 +272,7 @@ foreach (name   ert_util_alloc_file_components
         )
 
     add_executable(${name} util/tests/${name}.cpp)
+    target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/private-include)
     target_link_libraries(${name} ecl)
     add_test(NAME ${name} COMMAND ${name})
 endforeach ()
@@ -426,7 +429,7 @@ foreach (name geo_util_xlines geo_polygon geo_polygon_collection)
 endforeach ()
 
 if (ERT_BUILD_CXX)
-    foreach (test ert_util_unique_ptr ert_util_test_area_xx)
+    foreach (test ert_util_unique_ptr)
         add_executable(${test} util/tests/${test}.cpp)
         target_link_libraries(${test} ecl)
         add_test(NAME ${test} COMMAND ${test})
