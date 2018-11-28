@@ -56,7 +56,6 @@ endif ()
 
 if (ERT_BUILD_CXX)
     list(APPEND opt_srcs ecl/FortIO.cpp
-                         ecl/Smspec.cpp
                          ecl/EclFilename.cpp
 )
 endif ()
@@ -350,6 +349,7 @@ foreach (name   ecl_alloc_cpgrid
                 ecl_grid_init_fwrite
                 ecl_grid_reset_actnum
                 ecl_grid_ext_actnum
+                ecl_nnc_export_intersect
                 ecl_sum_data_intermediate_test
                 ecl_grid_cell_contains
                 ecl_unsmry_loader_test
@@ -435,7 +435,7 @@ if (ERT_BUILD_CXX)
         add_test(NAME ${test} COMMAND ${test})
     endforeach()
 
-    foreach (test eclxx_kw eclxx_fortio eclxx_smspec eclxx_filename eclxx_types)
+    foreach (test eclxx_kw eclxx_fortio eclxx_filename eclxx_types)
         add_executable(${test} ecl/tests/${test}.cpp)
         target_link_libraries(${test} ecl)
         add_test(NAME ${test} COMMAND ${test})
@@ -676,7 +676,9 @@ add_test(NAME well_segment_load
 add_test(NAME well_segment_branch_conn_load
          COMMAND well_segment_branch_conn_load ${_eclpath}/MSWcase/MSW_CASE.X0021)
 
-add_test(NAME well_info COMMAND well_info ${_eclpath}/Gurbat/ECLIPSE.EGRID)
+add_test(NAME well_info1 COMMAND well_info ${_eclpath}/Gurbat/ECLIPSE.EGRID)
+add_test(NAME well_info2 COMMAND well_info ${_eclpath}/well_info_rio/BMS8_TMPL_1-BMS8_105DST_EMBED_T0_1.EGRID
+                                           ${_eclpath}/well_info_rio/BMS8_TMPL_1-BMS8_105DST_EMBED_T0_1.UNRST)
 
 add_test(NAME well_conn_CF COMMAND well_conn_CF ${_eclpath}/Gurbat/ECLIPSE.X0060)
 

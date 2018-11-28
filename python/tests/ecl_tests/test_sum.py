@@ -22,6 +22,8 @@ import csv
 import shutil
 import cwrap
 import stat
+import pandas
+from pandas.testing import assert_frame_equal
 from contextlib import contextmanager
 from unittest import skipIf, skipUnless, skipIf
 
@@ -77,6 +79,21 @@ def create_case(case = "CSV", restart_case = None, restart_step = -1, data_start
                                       "FGPT" : fgpt },
                         restart_case = restart_case,
                         restart_step = restart_step)
+
+def create_case2(case = "CSV", restart_case = None, restart_step = -1, data_start = None):
+    length = 100
+    return createEclSum(case , [("WOPT", "OPX" , 0, "SM3") , ("FOPR" , None , 0, "SM3/DAY"), ("BPR" , None , 10, "SM3"), ("RPR", None, 3, "BARS"), ("COPR", "OPX", 421, "BARS")],
+                        sim_length_days = length,
+                        num_report_step = 10,
+                        num_mini_step = 10,
+                        data_start = data_start,
+                        func_table = {"FOPT" : fopt,
+                                      "FOPR" : fopr ,
+                                      "FGPT" : fgpt },
+                        restart_case = restart_case,
+                        restart_step = restart_step)
+
+
 
 class SumTest(EclTest):
 
@@ -549,6 +566,24 @@ class SumTest(EclTest):
         self.assertEqual(len(case), rows)
 
 
+    def test_csv_load(self):
+        case = create_case2()
+        frame = case.pandas_frame()
+        ecl_sum = EclSum.from_pandas("PANDAS", frame, dims=[20,10,5])
+
+        for key in frame.columns:
+            self.assertTrue(key in ecl_sum)
+
+        df = ecl_sum.pandas_frame()
+        assert_frame_equal(frame, df)
+
+        ecl_sum_less = EclSum.from_pandas("PANDAS", frame, dims=[20,10,5], headers=['BPR:10', 'RPR:3,1,1', 'COPR:OPX:1,2,3'])
+        del frame['WOPT:OPX']
+        del frame['FOPR']
+        df_less = ecl_sum_less.pandas_frame()
+        assert_frame_equal(frame, df_less)
+
+
     def test_total_and_rate(self):
         self.assertTrue( EclSum.is_total("FOPT"))
         self.assertTrue( EclSum.is_total("WWPT:OP_3"))
@@ -585,3 +620,49 @@ class SumTest(EclTest):
             case.fwrite()
             os.mkdir("UNITS")
             case2 = EclSum("./UNITS")
+
+
+    def test_resample_extrapolate(self):
+        """
+        Test resampling of summary with extrapolate option of lower and upper boundaries enabled
+        Note: When performing resampling on cp_simple3 test case, it fails to duplicate node 251 so using mocked ecl_sum instead
+        path = os.path.join(self.TESTDATA_ROOT, "local/ECLIPSE/cp_simple3/SIMPLE_SUMMARY3")
+        ecl_sum = EclSum( path, lazy_load=True )
+        """
+        from ecl.util.util import TimeVector, CTime
+
+        time_points = TimeVector()
+        ecl_sum = create_case(data_start=datetime.date(2010, 1, 1))
+        start_time = ecl_sum.get_data_start_time() - datetime.timedelta(seconds=86400)
+        end_time = ecl_sum.get_end_time() + datetime.timedelta(seconds=86400)
+        delta = end_time - start_time
+
+        N = 25
+        time_points.initRange( CTime(start_time),
+                               CTime(end_time),
+                               CTime(int(delta.total_seconds()/(N - 1))))
+        time_points.append(CTime(end_time))
+        resampled = ecl_sum.resample( "OUTPUT_CASE", time_points, lower_extrapolation=True, upper_extrapolation=True )
+
+        for key in ecl_sum.keys():
+            self.assertIn( key, resampled )
+
+        self.assertEqual(ecl_sum.get_data_start_time() -  datetime.timedelta(seconds=86400), resampled.get_data_start_time())
+
+        key_not_rate = "FOPT"
+        for time_index,t in enumerate(time_points):
+            if t < ecl_sum.get_data_start_time():
+                self.assertFloatEqual(resampled.iget( key_not_rate, time_index), ecl_sum._get_first_value(key_not_rate))
+            elif t >  ecl_sum.get_end_time():
+                self.assertFloatEqual(resampled.iget( key_not_rate, time_index), ecl_sum.get_last_value( key_not_rate))
+            else:
+                self.assertFloatEqual(resampled.iget( key_not_rate, time_index), ecl_sum.get_interp_direct( key_not_rate, t))
+
+        key_rate = "FOPR"
+        for time_index,t in enumerate(time_points):
+            if t < ecl_sum.get_data_start_time():
+                self.assertFloatEqual(resampled.iget( key_rate, time_index), 0)
+            elif t >  ecl_sum.get_end_time():
+                self.assertFloatEqual(resampled.iget( key_rate, time_index), 0)
+            else:
+                self.assertFloatEqual(resampled.iget( key_rate, time_index), ecl_sum.get_interp_direct( key_rate, t))
