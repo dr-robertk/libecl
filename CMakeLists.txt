@@ -11,7 +11,7 @@ endif()
 #-----------------------------------------------------------------
 
 set( ECL_VERSION_MAJOR 2 )   # Remember to update release notes whenever
-set( ECL_VERSION_MINOR 3 )   # you change the ERT_VERSION_MINOR or MAJOR
+set( ECL_VERSION_MINOR 4 )   # you change the ERT_VERSION_MINOR or MAJOR
 set( ECL_VERSION_MICRO git ) # with "new in Ert Version X.X.X"!
 
 # If the micro version is not integer, that should be interpreted as a
@@ -51,7 +51,6 @@ option( ENABLE_PYTHON       "Build and install the Python wrappers"             
 option( BUILD_SHARED_LIBS   "Build shared libraries"                                  ON )
 option( ERT_USE_OPENMP      "Use OpenMP"                                              OFF )
 option( RST_DOC             "Build RST documentation"                                 OFF)
-option( ERT_BUILD_CXX       "Build some CXX wrappers"                                 ON)
 option( USE_RPATH           "Don't strip RPATH from libraries and binaries"           OFF)
 option( INSTALL_ERT_LEGACY  "Add ert legacy wrappers"                                 OFF)
 
@@ -116,7 +115,7 @@ endif()
 # Treat warnings as errors if not on Windows
 if (NOT ERT_WINDOWS)
    set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Wno-unknown-pragmas ")
-   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unknown-pragmas -Wno-unused-result -Wno-unused-parameter" )
+   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfatal-errors -Wall -Wno-unknown-pragmas -Wno-unused-result -Wno-unused-parameter" )
 endif()
 
 if (MSVC)
@@ -339,11 +338,6 @@ if (ENABLE_PYTHON)
     # fails in the python/CMakeLists.txt file the ENABLE_PYTHON
     # will be set to OFF.
     add_subdirectory( python )
-
-    if(RST_DOC)
-       add_subdirectory( docs )
-    endif()
-
 endif()
 
 if (ENABLE_PYTHON)
