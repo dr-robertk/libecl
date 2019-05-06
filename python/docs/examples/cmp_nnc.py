@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import sys
 from operator import itemgetter
-from ecl.ecl import EclFile, EclGrid
+from ecl.eclfile import EclFile
+from ecl.grid import EclGrid
 
 
 
@@ -25,7 +26,7 @@ if __name__ == "__main__":
         i1,j1,k1 = grid.get_ijk( global_index = g1 )
         i2,j2,k2 = grid.get_ijk( global_index = g2 )
 
-        print "(%02d,%02d,%02d) -> (%02d,%02d,%02d)  T:%g" % (i1,j1,k2,i2,j2,k2,T)
+        print "(%02d,%02d,%02d) -> (%02d,%02d,%02d)  T:%g" % (i1,j1,k1,i2,j2,k2,T)
 
 
 

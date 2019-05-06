@@ -329,12 +329,14 @@ foreach (name   ecl_alloc_cpgrid
                 ecl_grid_copy
                 ecl_grid_create
                 ecl_grid_DEPTHZ
+                ecl_grid_fwrite
                 ecl_grid_unit_system
                 ecl_grid_export
                 ecl_grid_init_fwrite
                 ecl_grid_reset_actnum
                 ecl_grid_ext_actnum
                 ecl_nnc_export_intersect
+                ecl_sum_restart
                 ecl_sum_data_intermediate_test
                 ecl_grid_cell_contains
                 ecl_unsmry_loader_test
