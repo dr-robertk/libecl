@@ -1,5 +1,5 @@
 /*
-   Copyright (C) 2011  Statoil ASA, Norway.
+   Copyright (C) 2011  Equinor ASA, Norway.
 
    The file 'util.c' is part of ERT - Ensemble based Reservoir Tool.
 
@@ -996,7 +996,9 @@ char * util_alloc_normal_path( const char * input_path ) {
     return util_alloc_realpath__( input_path );
 
   char * realpath = util_alloc_realpath__(input_path);
-  return util_alloc_rel_path( NULL , realpath );
+  char * rel_path = util_alloc_rel_path( NULL , realpath );
+  free( realpath );
+  return rel_path;
 }
 
 

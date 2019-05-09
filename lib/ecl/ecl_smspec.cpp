@@ -1,5 +1,5 @@
 /*
-   Copyright (C) 2011  Statoil ASA, Norway.
+   Copyright (C) 2011  Equinor ASA, Norway.
 
    The file 'ecl_smspec.c' is part of ERT - Ensemble based Reservoir Tool.
 
@@ -882,6 +882,7 @@ static void ecl_smspec_load_restart( ecl_smspec_type * ecl_smspec , const ecl_fi
         This code block will translate '/' -> '\' in the restart keyword which
         is read from the summary file.
       */
+
 #ifdef ERT_WINDOWS
       for (int i=0; i < strlen(restart_base); i++) {
         if (restart_base[i] == UTIL_POSIX_PATH_SEP_CHAR)
@@ -891,19 +892,20 @@ static void ecl_smspec_load_restart( ecl_smspec_type * ecl_smspec , const ecl_fi
 
       std::string path = ecl::util::path::dirname( ecl_smspec->header_file );
       smspec_header = ecl_util_alloc_exfilename( path.c_str() , restart_base , ECL_SUMMARY_HEADER_FILE , ecl_smspec->formatted , 0);
-      if (!util_same_file(smspec_header , ecl_smspec->header_file.c_str()))    /* Restart from the current case is ignored. */ {
-        if (util_is_abs_path(restart_base))
-          ecl_smspec->restart_case = restart_base;
-        else {
-          char * tmp_path = util_alloc_filename( path.c_str() , restart_base , NULL );
-          char * abs_path = util_alloc_abs_path(tmp_path);
-          ecl_smspec->restart_case = abs_path;
-          free( abs_path );
-          free( tmp_path );
+      if (smspec_header) {
+        if (!util_same_file(smspec_header , ecl_smspec->header_file.c_str()))    /* Restart from the current case is ignored. */ {
+          if (util_is_abs_path(restart_base))
+            ecl_smspec->restart_case = restart_base;
+          else {
+            char * tmp_path = util_alloc_filename( path.c_str() , restart_base , NULL );
+            char * abs_path = util_alloc_abs_path(tmp_path);
+            ecl_smspec->restart_case = abs_path;
+            free( abs_path );
+            free( tmp_path );
+          }
         }
+        free( smspec_header );
       }
-
-      free( smspec_header );
     }
     free( restart_base );
   }
@@ -928,7 +930,7 @@ static const ecl::smspec_node * ecl_smspec_insert_node(ecl_smspec_type * ecl_sms
   ecl_smspec_install_gen_keys( ecl_smspec, *smspec_node.get() );
   ecl_smspec_install_special_keys( ecl_smspec, *smspec_node.get() );
 
-  if (smspec_node_need_nums( &smspec_node ))
+  if (smspec_node->need_nums())
     ecl_smspec->need_nums = true;
 
   ecl_smspec->smspec_nodes.push_back(std::move(smspec_node));

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2017  statoil asa, norway.
+   Copyright (c) 2017  equinor asa, norway.
 
    The file 'ecl_nnc_geometry.c' is part of ert - ensemble based reservoir tool.
 
@@ -92,7 +92,7 @@ static bool ecl_nnc_cmp(const ecl_nnc_pair_type& nnc1, const ecl_nnc_pair_type& 
   if (nnc1.global_index2 != nnc2.global_index2)
     return nnc1.global_index2 < nnc2.global_index2;
 
-  return true;
+  return false;
 }
 
 
